@@ -55,8 +55,10 @@ Candlestick/
 ├── # HuggingFace Benchmarking Framework
 ├── model_configs.py                   # Model specifications
 ├── benchmark_utils.py                 # Utility functions
+├── data_loader.py                     # Standalone data loading functions
 ├── huggingface_benchmark.py           # Main benchmarking script
 ├── results_analyzer.py                # Results analysis & visualization
+├── test_benchmark.py                  # Test suite for framework
 ├── 
 └── benchmarks/                        # Outputs
     ├── results/                       # JSON results

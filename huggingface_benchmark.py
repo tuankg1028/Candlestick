@@ -23,14 +23,16 @@ from sklearn.metrics import accuracy_score, f1_score, recall_score, roc_auc_scor
 from model_configs import BENCHMARK_MODELS, get_model_config, get_model_set, MODEL_SETS
 from benchmark_utils import ModelAdapter, PerformanceMonitor, BenchmarkDataLoader, cleanup_gpu_memory, get_device_info
 
-# Import data loading functions from merged_candlestick.py
+# Import data loading functions from standalone data loader
 try:
-    from merged_candlestick import load_images_parallel, COINS, TIME_LENGTHS, WINDOW_SIZES
+    from data_loader import load_candlestick_data, COINS, TIME_LENGTHS, WINDOW_SIZES, list_available_data
+    DATA_LOADER_AVAILABLE = True
 except ImportError:
-    print("Warning: Could not import from merged_candlestick.py. Some functions may not be available.")
+    print("Error: Could not import data_loader.py. Please ensure the file exists.")
     COINS = {}
     TIME_LENGTHS = [7, 14, 21, 28]
     WINDOW_SIZES = [5, 15, 30]
+    DATA_LOADER_AVAILABLE = False
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -54,41 +56,13 @@ class HuggingFaceBenchmark:
         
     def load_candlestick_data(self, coin: str, period: str, window_size: int, 
                             experiment_type: str = "regular") -> Tuple[np.ndarray, np.ndarray]:
-        """Load candlestick image data from existing pipeline"""
+        """Load candlestick image data using standalone data loader"""
         
-        # Determine base directory based on experiment type
-        if experiment_type == "regular":
-            base_dir = "crypto_research_minute"
-        elif experiment_type == "fullimage":
-            base_dir = "crypto_research_minute_fullimage"
-        elif experiment_type == "irregular":
-            base_dir = "crypto_research_minute_irregular"
-        else:
-            raise ValueError(f"Unknown experiment type: {experiment_type}")
-        
-        # Construct paths similar to merged_candlestick.py
-        coin_dir = os.path.join(base_dir, coin)
-        images_dir = os.path.join(coin_dir, "images")
-        
-        # Try to find existing data
-        potential_paths = []
-        for year in [2024]:
-            for month in range(1, 13):
-                month_str = f"{year}-{month:02d}"
-                subdir = f"{month_str}_1m_{period}_w{window_size}"
-                labels_file = os.path.join(images_dir, subdir, f"labels_{month_str}_1m_{period}_w{window_size}.csv")
-                if os.path.exists(labels_file):
-                    potential_paths.append((labels_file, os.path.join(images_dir, subdir)))
-        
-        if not potential_paths:
-            raise FileNotFoundError(f"No candlestick data found for {coin}, {period}, window size {window_size}")
-        
-        # Use the first available dataset
-        labels_file, images_path = potential_paths[0]
-        logger.info(f"Loading data from: {labels_file}")
+        if not DATA_LOADER_AVAILABLE:
+            raise ImportError("Data loader not available. Please ensure data_loader.py exists.")
         
         try:
-            X, y = load_images_parallel(labels_file, images_path)
+            X, y = load_candlestick_data(coin, period, window_size, experiment_type)
             logger.info(f"Loaded {len(X)} samples with shape {X[0].shape if len(X) > 0 else 'N/A'}")
             return X, y
         except Exception as e:
@@ -427,8 +401,21 @@ def main():
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--max-samples", type=int, default=1000, help="Maximum samples to use (0 for all)")
     parser.add_argument("--output-dir", default="benchmarks", help="Output directory")
+    parser.add_argument("--list-data", action="store_true", help="List available data and exit")
     
     args = parser.parse_args()
+    
+    # Check data loader availability
+    if not DATA_LOADER_AVAILABLE:
+        print("❌ Error: Data loader not available.")
+        print("Please ensure data_loader.py exists in the current directory.")
+        return
+    
+    # List available data if requested
+    if args.list_data:
+        print("Listing available candlestick data...")
+        list_available_data()
+        return
     
     # Initialize benchmark
     benchmark = HuggingFaceBenchmark(args.output_dir)
