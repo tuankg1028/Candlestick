@@ -1,0 +1,39 @@
+# Compatible Requirements for HuggingFace Model Benchmarking Framework
+# This version uses more flexible version constraints for better compatibility
+
+# Core ML libraries
+torch>=1.12.0
+torchvision>=0.13.0
+transformers>=4.20.0
+timm>=0.8.0
+
+# Data processing
+numpy>=1.20.0
+pandas>=1.2.0
+scikit-learn>=0.24.0
+Pillow>=8.0.0
+
+# Visualization
+matplotlib>=3.3.0
+seaborn>=0.11.0
+
+# System monitoring
+psutil>=5.7.0
+
+# Existing requirements from candlestick analysis (flexible versions)
+requests>=2.20.0
+mplfinance  # Install latest available version
+
+# Alternative installation commands:
+# For mplfinance specifically: pip install mplfinance --pre
+# Or: pip install mplfinance==0.12.10b0
+
+# Optional: For faster training (if using GPU)
+# accelerate>=0.15.0
+
+# Optional: For model quantization and optimization  
+# optimum>=1.5.0
+
+# Development and testing
+# pytest>=6.0.0
+# jupyter>=1.0.0

@@ -38,8 +38,13 @@ python results_analyzer.py
 
 ```
 Candlestick/
-├── README.md                          # This file
+├── README.md                          # Main project README
 ├── README_benchmark.md                 # Detailed benchmarking guide
+├── 
+├── # Installation & Requirements
+├── install_requirements.py            # Automated installation script
+├── requirements_benchmark.txt         # Benchmark dependencies
+├── requirements_benchmark_compatible.txt # Compatible versions
 ├── 
 ├── # Original Candlestick Analysis
 ├── merged_candlestick.py              # Main analysis script (merged from 3 files)
@@ -52,7 +57,6 @@ Candlestick/
 ├── benchmark_utils.py                 # Utility functions
 ├── huggingface_benchmark.py           # Main benchmarking script
 ├── results_analyzer.py                # Results analysis & visualization
-├── requirements_benchmark.txt         # Benchmark dependencies
 ├── 
 └── benchmarks/                        # Outputs
     ├── results/                       # JSON results
@@ -93,15 +97,31 @@ Candlestick/
 
 ## 🛠️ Installation
 
-### For Traditional Analysis Only
+### Option 1: Automated Installation (Recommended)
 ```bash
-# Install basic requirements (infer from merged_candlestick.py imports)
-pip install requests pandas mplfinance matplotlib numpy pillow tensorflow scikit-learn psutil
+# Run the automated installer
+python install_requirements.py
+
+# Check if everything is working
+python install_requirements.py --check
 ```
 
-### For Complete Framework (Traditional + Benchmarking)
+### Option 2: Manual Installation
 ```bash
+# For complete framework (traditional + benchmarking)
 pip install -r requirements_benchmark.txt
+
+# If you encounter version conflicts, try the compatible version:
+pip install -r requirements_benchmark_compatible.txt
+
+# For mplfinance specifically (if it fails):
+pip install mplfinance --pre
+```
+
+### Option 3: Traditional Analysis Only
+```bash
+# Minimal requirements for candlestick analysis
+pip install requests pandas mplfinance matplotlib numpy pillow tensorflow scikit-learn psutil
 ```
 
 ## 📈 Usage Examples
