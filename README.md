@@ -24,13 +24,21 @@ python merged_candlestick.py --experiment irregular
 
 ### Option 2: HuggingFace Model Benchmarking
 ```bash
-# Install benchmark dependencies
-pip install -r requirements_benchmark.txt
+# 1. Install dependencies (choose one method)
+python install_requirements.py  # Automated (recommended)
+# OR
+pip install -r requirements_benchmark.txt  # Manual
 
-# Quick benchmark test
+# 2. Test the framework
+python test_benchmark.py
+
+# 3. Check available data (optional)
+python huggingface_benchmark.py --list-data
+
+# 4. Run quick benchmark
 python huggingface_benchmark.py --model-set quick_test --max-samples 500 --epochs 3
 
-# Analyze results
+# 5. Analyze results
 python results_analyzer.py
 ```
 
@@ -38,13 +46,15 @@ python results_analyzer.py
 
 ```
 Candlestick/
-├── README.md                          # Main project README
+├── README.md                           # Main project README
 ├── README_benchmark.md                 # Detailed benchmarking guide
+├── CHANGELOG.md                        # Version history and updates
 ├── 
 ├── # Installation & Requirements
 ├── install_requirements.py            # Automated installation script
 ├── requirements_benchmark.txt         # Benchmark dependencies
 ├── requirements_benchmark_compatible.txt # Compatible versions
+├── test_benchmark.py                  # Framework test suite
 ├── 
 ├── # Original Candlestick Analysis
 ├── merged_candlestick.py              # Main analysis script (merged from 3 files)
@@ -58,11 +68,10 @@ Candlestick/
 ├── data_loader.py                     # Standalone data loading functions
 ├── huggingface_benchmark.py           # Main benchmarking script
 ├── results_analyzer.py                # Results analysis & visualization
-├── test_benchmark.py                  # Test suite for framework
 ├── 
 └── benchmarks/                        # Outputs
-    ├── results/                       # JSON results
-    ├── models/                        # Saved models
+    ├── results/                       # JSON benchmark results
+    ├── models/                        # Saved model files
     └── reports/                       # Analysis reports & plots
 ```
 
@@ -128,42 +137,48 @@ pip install requests pandas mplfinance matplotlib numpy pillow tensorflow scikit
 
 ## 📈 Usage Examples
 
-### 1. Generate Candlestick Data
+### 1. Getting Started (First Time Setup)
 ```bash
-# Generate regular candlestick images
+# Install all dependencies
+python install_requirements.py
+
+# Test everything is working
+python test_benchmark.py
+
+# Generate candlestick data (if not done already)
 python merged_candlestick.py --experiment regular
 
-# Generate full resolution images  
-python merged_candlestick.py --experiment fullimage
-
-# Generate with irregular/missing data
-python merged_candlestick.py --experiment irregular
+# Check what data is available
+python huggingface_benchmark.py --list-data
 ```
 
 ### 2. Quick Model Comparison
 ```bash
-# Test 2 lightweight models quickly
-python huggingface_benchmark.py --model-set quick_test --max-samples 500 --epochs 3
+# Test 2 lightweight models quickly (5 minutes)
+python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
 
-# View results
+# View results with visualizations
 python results_analyzer.py
 ```
 
-### 3. Comprehensive Benchmarking
+### 3. Production Benchmarking
 ```bash
-# Test all lightweight models
-python huggingface_benchmark.py --model-set lightweight --epochs 5
+# Test all lightweight models (30 minutes)
+python huggingface_benchmark.py --model-set lightweight --epochs 5 --max-samples 1000
 
-# Test all models (requires significant resources)
+# Test balanced models (1-2 hours)
+python huggingface_benchmark.py --model-set balanced --epochs 8 --max-samples 2000
+
+# Full benchmark - all models (4-8 hours)
 python huggingface_benchmark.py --model-set full_benchmark --epochs 10
 
-# Generate detailed analysis
-python results_analyzer.py --output-prefix comprehensive_analysis
+# Generate comprehensive analysis report
+python results_analyzer.py --output-prefix full_analysis
 ```
 
-### 4. Custom Configuration
+### 4. Custom Configuration Examples
 ```bash
-# Specific coin and parameters
+# Focus on specific cryptocurrency
 python huggingface_benchmark.py \
   --coin ETHUSDT \
   --period 14days \
@@ -171,6 +186,36 @@ python huggingface_benchmark.py \
   --model-set balanced \
   --epochs 8 \
   --max-samples 2000
+
+# Compare transformer models only
+python huggingface_benchmark.py \
+  --model-set transformers_only \
+  --experiment-type fullimage \
+  --epochs 10
+
+# Quick test with irregular data
+python huggingface_benchmark.py \
+  --model-set quick_test \
+  --experiment-type irregular \
+  --max-samples 500
+```
+
+### 5. Troubleshooting and Diagnostics
+```bash
+# Check if framework is working correctly
+python test_benchmark.py
+
+# List all available datasets
+python huggingface_benchmark.py --list-data
+
+# Test data loading manually
+python data_loader.py
+
+# Check model configurations
+python model_configs.py
+
+# Test individual components
+python benchmark_utils.py
 ```
 
 ## 📊 Expected Results
@@ -240,16 +285,89 @@ python huggingface_benchmark.py \
 
 ## 🔍 Troubleshooting
 
-### Common Issues
-1. **CUDA Out of Memory**: Reduce `--max-samples` or use `--model-set lightweight`
-2. **Missing Data**: Run `python merged_candlestick.py --experiment fullimage` first
-3. **Import Errors**: Install all requirements with `pip install -r requirements_benchmark.txt`
+### Quick Diagnostics
+```bash
+# Run comprehensive test suite
+python test_benchmark.py
 
-### Performance Tips
-- Use GPU for faster training
-- Start with `quick_test` model set
-- Limit samples with `--max-samples` for testing
-- Close other applications to free memory
+# Check what data is available
+python huggingface_benchmark.py --list-data
+
+# Test data loading specifically
+python data_loader.py
+```
+
+### Common Issues & Solutions
+
+#### 1. **Import Errors**
+```bash
+# Error: "Could not import from merged_candlestick.py" or "name 'load_images_parallel' is not defined"
+# Solution: Use the test suite to diagnose
+python test_benchmark.py
+
+# If data_loader.py is missing, re-download or recreate it
+```
+
+#### 2. **Missing Data Files**
+```bash
+# Error: "No candlestick data found"
+# Solution: Generate data first
+python merged_candlestick.py --experiment regular
+python merged_candlestick.py --experiment fullimage
+
+# Check what's available
+python huggingface_benchmark.py --list-data
+```
+
+#### 3. **Installation Issues**
+```bash
+# Error: mplfinance version conflicts
+# Solution: Use automated installer
+python install_requirements.py
+
+# Or install with pre-release
+pip install mplfinance --pre
+
+# Or use compatible requirements
+pip install -r requirements_benchmark_compatible.txt
+```
+
+#### 4. **CUDA/Memory Issues**
+```bash
+# Error: "CUDA out of memory"
+# Solutions:
+python huggingface_benchmark.py --model-set lightweight --max-samples 500
+python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
+
+# Close other GPU applications
+# Reduce batch sizes in model configs
+```
+
+#### 5. **Model Loading Errors**
+```bash
+# Error: Model download or loading failures
+# Solutions: Check internet connection, try individual models
+python -c "from model_configs import get_model_config; print(get_model_config('efficientnet_b0'))"
+
+# Clear cache and retry
+rm -rf ~/.cache/huggingface/
+```
+
+### Performance Optimization Tips
+- **Start Small**: Use `quick_test` with `--max-samples 200 --epochs 2`
+- **Use GPU**: Ensure CUDA is available for faster training
+- **Monitor Resources**: Watch memory usage with `htop` or Task Manager
+- **Incremental Testing**: Test one model at a time first
+- **Data Preparation**: Generate all needed data beforehand
+
+### Debug Mode
+```bash
+# Enable verbose logging
+export TRANSFORMERS_VERBOSITY=info
+
+# Run with detailed error messages
+python huggingface_benchmark.py --model-set quick_test --max-samples 100 --epochs 1
+```
 
 ## 📚 Documentation
 
@@ -273,7 +391,45 @@ Please check individual model licenses when using HuggingFace models in producti
 
 ---
 
-**🎉 Ready to start?** Begin with a quick test:
+## 🆕 Recent Updates (Version 2.0)
+
+### ✅ Major Fixes
+- **Fixed Import Error**: No more `'load_images_parallel' is not defined` errors
+- **Fixed Installation Issues**: Automated installer handles mplfinance and version conflicts
+- **Enhanced Reliability**: Standalone data loading module for robust operation
+
+### 🚀 New Features  
+- **Test Suite**: `python test_benchmark.py` verifies everything works
+- **Data Discovery**: `--list-data` option shows available datasets
+- **Automated Installation**: `python install_requirements.py` handles complex dependencies
+- **Better Documentation**: Step-by-step workflows with time estimates
+
+### 📋 Migration for Existing Users
 ```bash
+# Quick update - just run the test suite
+python test_benchmark.py
+
+# If issues found, use automated installer
+python install_requirements.py
+
+# Continue as normal - all commands unchanged
 python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
+```
+
+---
+
+**🎉 Ready to start?** Complete setup workflow:
+```bash
+# 1. Install and test
+python install_requirements.py
+python test_benchmark.py
+
+# 2. Generate data (if needed)  
+python merged_candlestick.py --experiment regular
+
+# 3. Run benchmark
+python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
+
+# 4. Analyze results
+python results_analyzer.py
 ```
