@@ -1,0 +1,36 @@
+# Requirements for HuggingFace Model Benchmarking Framework
+
+# Core ML libraries
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+timm>=0.9.0
+
+# Data processing
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+Pillow>=8.0.0
+
+# Visualization
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# System monitoring
+psutil>=5.8.0
+
+# Existing requirements from candlestick analysis
+requests>=2.25.0
+mplfinance>=0.12.0
+
+# Optional: For faster training (if using GPU)
+# Install via: pip install accelerate
+# accelerate>=0.20.0
+
+# Optional: For model quantization and optimization
+# Install via: pip install optimum
+# optimum>=1.8.0
+
+# Development and testing
+# pytest>=6.0.0
+# jupyter>=1.0.0
