@@ -600,8 +600,8 @@ def main():
                        help="Experiment types to test (for comprehensive benchmark)")
     
     # Training options
-    parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
-    parser.add_argument("--max-samples", type=int, default=1000, help="Maximum samples to use (0 for all)")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
+    parser.add_argument("--max-samples", type=int, default=0, help="Maximum samples to use (0 for all)")
     parser.add_argument("--output-dir", default="benchmarks", help="Output directory")
     parser.add_argument("--list-data", action="store_true", help="List available data and exit")
     
