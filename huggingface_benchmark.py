@@ -361,15 +361,10 @@ class HuggingFaceBenchmark:
                                    train_epochs: int = 5, max_samples: int = 1000) -> Dict:
         """Run comprehensive benchmark across all specified combinations"""
         
-        # Use defaults if not specified
-        if coins is None:
-            coins = list(COINS.keys())
-        if periods is None:
-            periods = [f"{days}days" for days in TIME_LENGTHS]
-        if window_sizes is None:
-            window_sizes = WINDOW_SIZES
-        if experiment_types is None:
-            experiment_types = ["regular", "fullimage", "irregular"]
+        coins = list(COINS.keys())
+        periods = [f"{days}days" for days in TIME_LENGTHS]
+        window_sizes = WINDOW_SIZES
+        experiment_types = ["regular", "fullimage", "irregular"]
         
         logger.info("=" * 100)
         logger.info("STARTING COMPREHENSIVE HUGGINGFACE BENCHMARK SUITE")
