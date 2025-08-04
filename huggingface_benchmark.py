@@ -25,7 +25,7 @@ from benchmark_utils import ModelAdapter, PerformanceMonitor, BenchmarkDataLoade
 
 # Import data loading functions from standalone data loader
 try:
-    from data_loader import load_candlestick_data, COINS, TIME_LENGTHS, WINDOW_SIZES, list_available_data
+    from data_loader import load_candlestick_data, COINS, TIME_LENGTHS, WINDOW_SIZES, list_available_data, find_candlestick_data
     DATA_LOADER_AVAILABLE = True
 except ImportError:
     print("Error: Could not import data_loader.py. Please ensure the file exists.")
@@ -109,6 +109,12 @@ class HuggingFaceBenchmark:
                     # Forward pass
                     optimizer.zero_grad()
                     outputs = model(batch_tensor)
+                    
+                    # Debug shapes to understand the error
+                    if epoch == 0 and total_predictions == 0:  # Only print once
+                        logger.info(f"Debug - outputs shape: {outputs.shape}, batch_labels shape: {batch_labels.shape}")
+                        logger.info(f"Debug - outputs type: {type(outputs)}, batch_labels type: {type(batch_labels)}")
+                    
                     loss = criterion(outputs, batch_labels)
                     
                     # Backward pass
@@ -349,6 +355,189 @@ class HuggingFaceBenchmark:
         
         return final_results
     
+    def run_comprehensive_benchmark(self, model_set: str = "quick_test",
+                                   coins: List[str] = None, periods: List[str] = None,
+                                   window_sizes: List[int] = None, experiment_types: List[str] = None,
+                                   train_epochs: int = 5, max_samples: int = 1000) -> Dict:
+        """Run comprehensive benchmark across all specified combinations"""
+        
+        # Use defaults if not specified
+        if coins is None:
+            coins = list(COINS.keys())
+        if periods is None:
+            periods = [f"{days}days" for days in TIME_LENGTHS]
+        if window_sizes is None:
+            window_sizes = WINDOW_SIZES
+        if experiment_types is None:
+            experiment_types = ["regular", "fullimage", "irregular"]
+        
+        logger.info("=" * 100)
+        logger.info("STARTING COMPREHENSIVE HUGGINGFACE BENCHMARK SUITE")
+        logger.info("=" * 100)
+        logger.info(f"Coins: {coins}")
+        logger.info(f"Periods: {periods}")
+        logger.info(f"Window sizes: {window_sizes}")
+        logger.info(f"Experiment types: {experiment_types}")
+        logger.info(f"Model set: {model_set}")
+        
+        # Calculate total combinations
+        total_combinations = len(coins) * len(periods) * len(window_sizes) * len(experiment_types)
+        logger.info(f"Total combinations to test: {total_combinations}")
+        
+        comprehensive_results = {}
+        successful_runs = 0
+        failed_runs = 0
+        start_time = time.time()
+        
+        combination_count = 0
+        
+        for coin in coins:
+            for period in periods:
+                for window_size in window_sizes:
+                    for experiment_type in experiment_types:
+                        combination_count += 1
+                        combination_key = f"{coin}_{period}_w{window_size}_{experiment_type}"
+                        
+                        logger.info(f"\n[{combination_count}/{total_combinations}] Testing combination: {combination_key}")
+                        
+                        try:
+                            # Check if data exists before running benchmark
+                            data_files = find_candlestick_data(coin, period, window_size, experiment_type)
+                            if not data_files:
+                                logger.warning(f"No data found for {combination_key}, skipping...")
+                                comprehensive_results[combination_key] = {
+                                    "status": "skipped",
+                                    "reason": "no_data_available",
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                                continue
+                            
+                            # Run benchmark for this combination
+                            result = self.run_benchmark_suite(
+                                model_set=model_set,
+                                coin=coin,
+                                period=period,
+                                window_size=window_size,
+                                experiment_type=experiment_type,
+                                train_epochs=train_epochs,
+                                max_samples=max_samples
+                            )
+                            
+                            if "error" not in result:
+                                comprehensive_results[combination_key] = result
+                                successful_runs += 1
+                                logger.info(f"✓ Successfully completed {combination_key}")
+                            else:
+                                comprehensive_results[combination_key] = result
+                                failed_runs += 1
+                                logger.error(f"✗ Failed {combination_key}: {result.get('error', 'Unknown error')}")
+                                
+                        except Exception as e:
+                            logger.error(f"✗ Exception in {combination_key}: {str(e)}")
+                            comprehensive_results[combination_key] = {
+                                "status": "error",
+                                "error": str(e),
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            failed_runs += 1
+        
+        total_time = time.time() - start_time
+        
+        # Create comprehensive summary
+        final_results = {
+            "comprehensive_benchmark_config": {
+                "model_set": model_set,
+                "coins": coins,
+                "periods": periods,
+                "window_sizes": window_sizes,
+                "experiment_types": experiment_types,
+                "train_epochs": train_epochs,
+                "max_samples": max_samples,
+                "total_combinations": total_combinations,
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs
+            },
+            "device_info": self.device_info,
+            "combination_results": comprehensive_results,
+            "total_benchmark_time": total_time,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Save comprehensive results
+        results_file = os.path.join(self.results_dir, f"comprehensive_benchmark_{model_set}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+        with open(results_file, 'w') as f:
+            json.dump(final_results, f, indent=2, default=str)
+        
+        logger.info("=" * 100)
+        logger.info("COMPREHENSIVE BENCHMARK COMPLETED!")
+        logger.info(f"Total time: {total_time/3600:.1f} hours ({total_time:.1f}s)")
+        logger.info(f"Successful runs: {successful_runs}/{total_combinations}")
+        logger.info(f"Failed runs: {failed_runs}/{total_combinations}")
+        logger.info(f"Results saved to: {results_file}")
+        logger.info("=" * 100)
+        
+        # Print comprehensive summary
+        self.print_comprehensive_summary(final_results)
+        
+        return final_results
+
+    def print_comprehensive_summary(self, results: Dict):
+        """Print a comprehensive summary across all combinations"""
+        print("\n" + "=" * 100)
+        print("COMPREHENSIVE BENCHMARK SUMMARY")
+        print("=" * 100)
+        
+        combination_results = results["combination_results"]
+        successful_combinations = {k: v for k, v in combination_results.items() 
+                                 if v.get("status") != "error" and v.get("status") != "skipped" and "error" not in v}
+        
+        if not successful_combinations:
+            print("No successful benchmark results to display.")
+            return
+        
+        # Aggregate results by different dimensions
+        print(f"\nSUCCESSFUL COMBINATIONS: {len(successful_combinations)}")
+        print("-" * 50)
+        
+        # Best performing models across all combinations
+        all_model_results = []
+        for combo_key, combo_result in successful_combinations.items():
+            if "results" in combo_result:
+                coin, period, window_spec, experiment = combo_key.split("_", 3)
+                window_size = window_spec.replace("w", "")
+                
+                for model_name, model_result in combo_result["results"].items():
+                    if "evaluation_metrics" in model_result:
+                        metrics = model_result["evaluation_metrics"]
+                        all_model_results.append({
+                            "Combination": f"{coin}_{period}_w{window_size}_{experiment}",
+                            "Model": model_result["model_config"]["name"],
+                            "Accuracy": metrics["accuracy"],
+                            "F1": metrics["f1"],
+                            "AUROC": metrics["auroc"]
+                        })
+        
+        if all_model_results:
+            # Top 10 results by accuracy
+            all_model_results.sort(key=lambda x: x["Accuracy"], reverse=True)
+            print("\nTOP 10 RESULTS BY ACCURACY:")
+            top_results_df = pd.DataFrame(all_model_results[:10])
+            print(top_results_df.to_string(index=False))
+            
+            # Best model per combination
+            combo_best = {}
+            for result in all_model_results:
+                combo = result["Combination"]
+                if combo not in combo_best or result["Accuracy"] > combo_best[combo]["Accuracy"]:
+                    combo_best[combo] = result
+            
+            print(f"\nBEST MODEL PER COMBINATION ({len(combo_best)} combinations):")
+            combo_df = pd.DataFrame(list(combo_best.values()))
+            combo_df = combo_df.sort_values("Accuracy", ascending=False)
+            print(combo_df.to_string(index=False))
+        
+        print("=" * 100)
+
     def print_benchmark_summary(self, results: Dict):
         """Print a summary of benchmark results"""
         print("\n" + "=" * 80)
@@ -393,11 +582,28 @@ def main():
     parser = argparse.ArgumentParser(description="HuggingFace Model Benchmarking for Candlestick Classification")
     parser.add_argument("--model-set", choices=list(MODEL_SETS.keys()), default="quick_test",
                        help="Set of models to benchmark")
+    
+    # Single benchmark options
     parser.add_argument("--coin", default="BTCUSDT", help="Cryptocurrency to analyze")
     parser.add_argument("--period", default="7days", help="Time period for analysis")
     parser.add_argument("--window-size", type=int, default=5, help="Window size for candlestick images")
     parser.add_argument("--experiment-type", choices=["regular", "fullimage", "irregular"], 
                        default="regular", help="Experiment type")
+    
+    # Comprehensive benchmark options
+    parser.add_argument("--comprehensive", action="store_true", 
+                       help="Run comprehensive benchmark across all combinations")
+    parser.add_argument("--coins", nargs="+", choices=list(COINS.keys()) if DATA_LOADER_AVAILABLE else [],
+                       help="Coins to test (for comprehensive benchmark)")
+    parser.add_argument("--periods", nargs="+", 
+                       choices=[f"{days}days" for days in TIME_LENGTHS] if DATA_LOADER_AVAILABLE else [],
+                       help="Periods to test (for comprehensive benchmark)")
+    parser.add_argument("--window-sizes", nargs="+", type=int, choices=WINDOW_SIZES if DATA_LOADER_AVAILABLE else [],
+                       help="Window sizes to test (for comprehensive benchmark)")
+    parser.add_argument("--experiment-types", nargs="+", choices=["regular", "fullimage", "irregular"],
+                       help="Experiment types to test (for comprehensive benchmark)")
+    
+    # Training options
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--max-samples", type=int, default=1000, help="Maximum samples to use (0 for all)")
     parser.add_argument("--output-dir", default="benchmarks", help="Output directory")
@@ -420,16 +626,30 @@ def main():
     # Initialize benchmark
     benchmark = HuggingFaceBenchmark(args.output_dir)
     
-    # Run benchmark suite
-    results = benchmark.run_benchmark_suite(
-        model_set=args.model_set,
-        coin=args.coin,
-        period=args.period,
-        window_size=args.window_size,
-        experiment_type=args.experiment_type,
-        train_epochs=args.epochs,
-        max_samples=args.max_samples if args.max_samples > 0 else None
-    )
+    if args.comprehensive:
+        # Run comprehensive benchmark
+        print("🚀 Starting comprehensive benchmark...")
+        results = benchmark.run_comprehensive_benchmark(
+            model_set=args.model_set,
+            coins=args.coins,
+            periods=args.periods,
+            window_sizes=args.window_sizes,
+            experiment_types=args.experiment_types,
+            train_epochs=args.epochs,
+            max_samples=args.max_samples if args.max_samples > 0 else None
+        )
+    else:
+        # Run single benchmark suite
+        print("🚀 Starting single benchmark...")
+        results = benchmark.run_benchmark_suite(
+            model_set=args.model_set,
+            coin=args.coin,
+            period=args.period,
+            window_size=args.window_size,
+            experiment_type=args.experiment_type,
+            train_epochs=args.epochs,
+            max_samples=args.max_samples if args.max_samples > 0 else None
+        )
 
 if __name__ == "__main__":
     main()
