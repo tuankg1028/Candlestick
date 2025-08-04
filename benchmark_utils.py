@@ -193,11 +193,7 @@ class ModelWithHead(nn.Module):
                 if hasattr(dummy_output, 'last_hidden_state'):
                     # Transformer models
                     hidden_size = dummy_output.last_hidden_state.shape[-1]
-                    self.head = nn.Sequential(
-                        nn.AdaptiveAvgPool1d(1),
-                        nn.Flatten(),
-                        nn.Linear(hidden_size, num_classes)
-                    )
+                    self.head = nn.Linear(hidden_size, num_classes)
                 else:
                     # CNN models
                     hidden_size = dummy_output.view(dummy_output.size(0), -1).shape[1]
@@ -209,8 +205,13 @@ class ModelWithHead(nn.Module):
     def forward(self, x):
         features = self.backbone(x)
         if hasattr(features, 'last_hidden_state'):
-            # Transformer output
-            features = features.last_hidden_state.mean(dim=1)  # Global average pooling
+            # Transformer output - use CLS token (first token) or mean pooling
+            if features.last_hidden_state.shape[1] > 1:
+                # Use CLS token (first token) for classification
+                features = features.last_hidden_state[:, 0, :]
+            else:
+                # Fallback to mean pooling if only one token
+                features = features.last_hidden_state.mean(dim=1)
         elif len(features.shape) > 2:
             # CNN output that needs flattening
             features = features.view(features.size(0), -1)
