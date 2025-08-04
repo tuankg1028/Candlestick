@@ -56,14 +56,16 @@ def load_images(labels_file, images_dir):
 COINS = {
     "BTCUSDT": {"train_month": (2024, 6), "test_months": [(2024, 12), (2024, 3), (2024, 8), (2024, 4), (2024, 1)]},
     "ETHUSDT": {"train_month": (2024, 6), "test_months": [(2024, 8), (2024, 4), (2024, 5), (2024, 3), (2024, 2)]},
-    "BNBUSDT": {"train_month": (2024, 10), "test_months": [(2024, 3), (2024, 12), (2024, 8), (2024, 1), (2024, 4)]},
-    "XRPUSDT": {"train_month": (2024, 9), "test_months": [(2024, 11), (2024, 12), (2024, 4), (2024, 8), (2024, 1)]},
-    "ADAUSDT": {"train_month": (2024, 9), "test_months": [(2024, 4), (2024, 12), (2024, 1), (2024, 3), (2024, 11)]},
-    "DOGEUSDT": {"train_month": (2024, 9), "test_months": [(2024, 3), (2024, 4), (2024, 11), (2024, 8), (2024, 12)]}
+    # "BNBUSDT": {"train_month": (2024, 10), "test_months": [(2024, 3), (2024, 12), (2024, 8), (2024, 1), (2024, 4)]},
+    # "XRPUSDT": {"train_month": (2024, 9), "test_months": [(2024, 11), (2024, 12), (2024, 4), (2024, 8), (2024, 1)]},
+    # "ADAUSDT": {"train_month": (2024, 9), "test_months": [(2024, 4), (2024, 12), (2024, 1), (2024, 3), (2024, 11)]},
+    # "DOGEUSDT": {"train_month": (2024, 9), "test_months": [(2024, 3), (2024, 4), (2024, 11), (2024, 8), (2024, 12)]}
 }
 
-TIME_LENGTHS = [7, 14, 21, 28]  # 1, 2, 3, 4 weeks in days
-WINDOW_SIZES = [5, 15, 30]  # Candles per image
+# TIME_LENGTHS = [7, 14, 21, 28]  # 1, 2, 3, 4 weeks in days
+TIME_LENGTHS = [7]  # 1, 2, 3, 4 weeks in days
+# WINDOW_SIZES = [5, 15, 30]  # Candles per image
+WINDOW_SIZES = [5]  # Candles per image
 
 def find_candlestick_data(coin, period, window_size, experiment_type="regular", base_path="."):
     """Find available candlestick data files"""
