@@ -54,7 +54,7 @@ class BenchmarkAnalyzer:
         self.benchmark_data = {}
         self.comparison_df = None
         self.failed_models = {}  # Store failed model information
-        self.is_comprehensive = False  # Track if this is comprehensive benchmark data
+        self.is_comprehensive = True  # Track if this is comprehensive benchmark data
     
     def load_results(self, pattern: str = "benchmark_suite_*.json") -> Dict:
         """Load benchmark results from JSON files"""
