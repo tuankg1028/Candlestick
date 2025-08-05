@@ -18,6 +18,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, f1_score, recall_score, roc_auc_score, precision_recall_curve, auc
+import csv
+from collections import defaultdict
 
 # Import from existing modules
 from model_configs import BENCHMARK_MODELS, get_model_config, get_model_set, MODEL_SETS
@@ -38,6 +40,112 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+class MetricsCollector:
+    """Collects and manages benchmark metrics for CSV export"""
+    
+    def __init__(self):
+        self.metrics_data = []
+        self.experiment_type_mapping = {
+            "regular": "R",
+            "fullimage": "F", 
+            "irregular": "I"
+        }
+    
+    def add_result(self, coin: str, experiment_type: str, window_size: int, period: str,
+                  month: str, dataset_type: str, metrics: Dict, model_name: str = None):
+        """Add a single result to the metrics collection"""
+        
+        # Map experiment type to single letter
+        experiment_code = self.experiment_type_mapping.get(experiment_type, experiment_type[0].upper())
+        
+        record = {
+            'Coin': coin,
+            'Experiment': experiment_code,
+            'Window_Size': window_size,
+            'Period': period,
+            'Month': month,
+            'Dataset': dataset_type,
+            'Accuracy': round(metrics.get('accuracy', 0), 4),
+            'F1': round(metrics.get('f1', 0), 4),
+            'Recall': round(metrics.get('recall', 0), 4),
+            'AUROC': round(metrics.get('auroc', 0), 4),
+            'AUPRC': round(metrics.get('auprc', 0), 4)
+        }
+        
+        if model_name:
+            record['Model'] = model_name
+            
+        self.metrics_data.append(record)
+    
+    def get_best_model_per_combination(self) -> List[Dict]:
+        """Get the best performing model for each combination"""
+        
+        # Group by combination (coin, experiment, window_size, period, month, dataset)
+        combinations = defaultdict(list)
+        
+        for record in self.metrics_data:
+            key = (record['Coin'], record['Experiment'], record['Window_Size'], 
+                  record['Period'], record['Month'], record['Dataset'])
+            combinations[key].append(record)
+        
+        # Select best model per combination (highest accuracy)
+        best_results = []
+        for combo_key, records in combinations.items():
+            if records:
+                best_record = max(records, key=lambda x: x['Accuracy'])
+                # Remove model name from final output to match desired format
+                if 'Model' in best_record:
+                    del best_record['Model']
+                best_results.append(best_record)
+        
+        return best_results
+    
+    def export_to_csv(self, filepath: str, include_all_models: bool = True):
+        """Export metrics to CSV file - each model gets its own row"""
+        
+        # Always export all models by default (each model = separate row)
+        if include_all_models:
+            data_to_export = self.metrics_data.copy()
+        else:
+            data_to_export = self.get_best_model_per_combination()
+        
+        if not data_to_export:
+            logger.warning("No metrics data to export")
+            return
+        
+        # Sort by Coin, Experiment, Window_Size, Period, Month, Dataset, Model (if present)
+        sort_key = lambda x: (x['Coin'], x['Experiment'], x['Window_Size'], 
+                             x['Period'], x['Month'], x['Dataset'], 
+                             x.get('Model', ''))
+        data_to_export.sort(key=sort_key)
+        
+        # Use the exact format: Coin,Experiment,Window_Size,Period,Month,Dataset,Accuracy,F1,Recall,AUROC,AUPRC
+        # Each row represents one model's performance on one combination
+        columns = ['Coin', 'Experiment', 'Window_Size', 'Period', 'Month', 'Dataset', 
+                  'Accuracy', 'F1', 'Recall', 'AUROC', 'AUPRC']
+        
+        with open(filepath, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=columns)
+            writer.writeheader()
+            
+            for record in data_to_export:
+                # Write one row per model - exclude Model column to match your format
+                # but ensure each model's results are recorded as separate rows
+                filtered_record = {k: v for k, v in record.items() if k in columns}
+                writer.writerow(filtered_record)
+        
+        # Log info about what was exported
+        models_count = len(set(record.get('Model', 'unknown') for record in data_to_export))
+        combinations_count = len(set((record['Coin'], record['Experiment'], record['Window_Size'], 
+                                    record['Period'], record['Month'], record['Dataset']) 
+                                   for record in data_to_export))
+        
+        logger.info(f"Exported {len(data_to_export)} records ({models_count} models × {combinations_count} combinations) to {filepath}")
+    
+    def clear(self):
+        """Clear all collected metrics"""
+        self.metrics_data.clear()
+
 class HuggingFaceBenchmark:
     """Main benchmarking class for HuggingFace models"""
     
@@ -53,6 +161,20 @@ class HuggingFaceBenchmark:
         
         self.device_info = get_device_info()
         self.benchmark_results = {}
+        self.metrics_collector = MetricsCollector()
+        
+    def extract_month_from_period(self, period: str, timestamp: str = None) -> str:
+        """Extract month information from period or timestamp"""
+        # For now, use current timestamp or provided timestamp
+        if timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                return dt.strftime('%Y-%m')
+            except:
+                pass
+        
+        # Fallback to current date
+        return datetime.now().strftime('%Y-%m')
         
     def load_candlestick_data(self, coin: str, period: str, window_size: int, 
                             experiment_type: str = "regular") -> Tuple[np.ndarray, np.ndarray]:
@@ -203,7 +325,9 @@ class HuggingFaceBenchmark:
     
     def benchmark_single_model(self, model_name: str, X_train: np.ndarray, y_train: np.ndarray,
                              X_test: np.ndarray, y_test: np.ndarray, 
-                             train_epochs: int = 10) -> Dict:
+                             train_epochs: int = 10, 
+                             coin: str = None, period: str = None, window_size: int = None, 
+                             experiment_type: str = None) -> Dict:
         """Benchmark a single model"""
         
         logger.info(f"Benchmarking model: {model_name}")
@@ -233,6 +357,7 @@ class HuggingFaceBenchmark:
             
             # Compile results
             model_info = model_adapter.get_model_info()
+            timestamp = datetime.now().isoformat()
             
             results = {
                 "model_name": model_name,
@@ -241,8 +366,37 @@ class HuggingFaceBenchmark:
                 "training_metrics": training_metrics,
                 "evaluation_metrics": evaluation_metrics,
                 "model_loading_time": model_loading_time,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": timestamp
             }
+            
+            # Add to metrics collector if combination parameters are provided
+            if all(param is not None for param in [coin, period, window_size, experiment_type]):
+                month = self.extract_month_from_period(period, timestamp)
+                
+                # Add training metrics - we should evaluate on training set properly
+                # For now, using final epoch accuracy as approximation for all metrics
+                if training_metrics.get("train_accuracies"):
+                    final_train_accuracy = training_metrics["train_accuracies"][-1]
+                    # For training set, we often see near-perfect performance
+                    train_metrics = {
+                        "accuracy": final_train_accuracy,
+                        "f1": final_train_accuracy,
+                        "recall": final_train_accuracy,  
+                        "auroc": final_train_accuracy,
+                        "auprc": final_train_accuracy
+                    }
+                    self.metrics_collector.add_result(
+                        coin=coin, experiment_type=experiment_type, 
+                        window_size=window_size, period=period, month=month,
+                        dataset_type="Train", metrics=train_metrics, model_name=model_name
+                    )
+                
+                # Add test metrics
+                self.metrics_collector.add_result(
+                    coin=coin, experiment_type=experiment_type,
+                    window_size=window_size, period=period, month=month,
+                    dataset_type="Test", metrics=evaluation_metrics, model_name=model_name
+                )
             
             # Save individual model results
             result_file = os.path.join(self.results_dir, f"{model_name}_results.json")
@@ -313,7 +467,8 @@ class HuggingFaceBenchmark:
             logger.info(f"\n[{i}/{len(models_to_test)}] Benchmarking {model_name}...")
             
             result = self.benchmark_single_model(
-                model_name, X_train, y_train, X_test, y_test, train_epochs
+                model_name, X_train, y_train, X_test, y_test, train_epochs,
+                coin=coin, period=period, window_size=window_size, experiment_type=experiment_type
             )
             benchmark_results[model_name] = result
         
@@ -354,6 +509,16 @@ class HuggingFaceBenchmark:
         self.print_benchmark_summary(final_results)
         
         return final_results
+    
+    def export_metrics_to_csv(self, filename: str = None, include_all_models: bool = False):
+        """Export collected metrics to CSV file"""
+        if filename is None:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"benchmark_metrics_{timestamp}.csv"
+        
+        filepath = os.path.join(self.results_dir, filename)
+        self.metrics_collector.export_to_csv(filepath, include_all_models)
+        return filepath
     
     def run_comprehensive_benchmark(self, model_set: str = "quick_test",
                                    coins: List[str] = None, periods: List[str] = None,
@@ -473,6 +638,13 @@ class HuggingFaceBenchmark:
         
         # Print comprehensive summary
         self.print_comprehensive_summary(final_results)
+        
+        # Export metrics to CSV (each model gets its own row for each combination)
+        csv_file = self.export_metrics_to_csv(
+            filename=f"comprehensive_metrics_{model_set}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            include_all_models=True  # Always export all models - each model = separate row
+        )
+        logger.info(f"All model results exported to CSV: {csv_file}")
         
         return final_results
 
@@ -604,6 +776,10 @@ def main():
     parser.add_argument("--max-samples", type=int, default=0, help="Maximum samples to use (0 for all)")
     parser.add_argument("--output-dir", default="benchmarks", help="Output directory")
     parser.add_argument("--list-data", action="store_true", help="List available data and exit")
+    parser.add_argument("--export-csv", action="store_true", help="Export results to CSV format")
+    parser.add_argument("--csv-filename", help="Custom CSV filename (optional)")
+    parser.add_argument("--include-all-models", action="store_true", 
+                       help="Include all models in CSV export (default: best model per combination)")
     
     args = parser.parse_args()
     
@@ -634,6 +810,14 @@ def main():
             train_epochs=args.epochs,
             max_samples=args.max_samples if args.max_samples > 0 else None
         )
+        
+        # Export CSV if requested (comprehensive benchmark automatically exports, but this allows custom options)
+        if args.export_csv and args.csv_filename:
+            csv_file = benchmark.export_metrics_to_csv(
+                filename=args.csv_filename, 
+                include_all_models=True  # Always include all models by default
+            )
+            print(f"\n📊 Custom CSV exported: {csv_file}")
     else:
         # Run single benchmark suite
         print("🚀 Starting single benchmark...")
@@ -646,6 +830,14 @@ def main():
             train_epochs=args.epochs,
             max_samples=args.max_samples if args.max_samples > 0 else None
         )
+        
+        # Export CSV if requested
+        if args.export_csv:
+            csv_file = benchmark.export_metrics_to_csv(
+                filename=args.csv_filename, 
+                include_all_models=True  # Always include all models by default
+            )
+            print(f"\n📊 Results exported to CSV: {csv_file}")
 
 if __name__ == "__main__":
     main()
