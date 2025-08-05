@@ -612,7 +612,7 @@ class BenchmarkAnalyzer:
             print(f"{pytorch_info['recommendation']}\n")
         
         # Get available experiment types
-        experiment_types = self.get_available_experiment_types()
+        experiment_types = ["regular", "fullimage", "irregular"]
         print(f"Found experiment types: {experiment_types}")
         
         all_generated_files = {}
