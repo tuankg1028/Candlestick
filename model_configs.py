@@ -88,57 +88,57 @@ BENCHMARK_MODELS = {
         description="Hybrid CNN-Transformer for efficient vision tasks"
     ),
     
-    "resnet_50": ModelConfig(
-        name="ResNet 50",
-        hf_identifier="microsoft/resnet-50",
-        parameters=25_600_000,
-        input_size=(224, 224),
-        num_classes=1000,
-        requires_timm=False,
-        architecture_type="cnn",
-        batch_size_recommendation=32,
-        memory_efficient=False,
-        description="Deep residual network with skip connections"
-    ),
+    # "resnet_50": ModelConfig(
+    #     name="ResNet 50",
+    #     hf_identifier="microsoft/resnet-50",
+    #     parameters=25_600_000,
+    #     input_size=(224, 224),
+    #     num_classes=1000,
+    #     requires_timm=False,
+    #     architecture_type="cnn",
+    #     batch_size_recommendation=32,
+    #     memory_efficient=False,
+    #     description="Deep residual network with skip connections"
+    # ),
     
-    "swin_tiny": ModelConfig(
-        name="Swin Tiny",
-        hf_identifier="microsoft/swin-tiny-patch4-window7-224",
-        parameters=28_300_000,
-        input_size=(224, 224),
-        num_classes=1000,
-        requires_timm=False,
-        architecture_type="transformer",
-        batch_size_recommendation=32,
-        memory_efficient=False,
-        description="Hierarchical transformer using shifted windows"
-    ),
+    # "swin_tiny": ModelConfig(
+    #     name="Swin Tiny",
+    #     hf_identifier="microsoft/swin-tiny-patch4-window7-224",
+    #     parameters=28_300_000,
+    #     input_size=(224, 224),
+    #     num_classes=1000,
+    #     requires_timm=False,
+    #     architecture_type="transformer",
+    #     batch_size_recommendation=32,
+    #     memory_efficient=False,
+    #     description="Hierarchical transformer using shifted windows"
+    # ),
     
-    "convnext_tiny": ModelConfig(
-        name="ConvNeXt Tiny",
-        hf_identifier="facebook/convnext-tiny-224",
-        parameters=29_000_000,
-        input_size=(224, 224),
-        num_classes=1000,
-        requires_timm=False,
-        architecture_type="cnn",
-        batch_size_recommendation=32,
-        memory_efficient=False,
-        description="Modernized CNN design inspired by transformers"
-    ),
+    # "convnext_tiny": ModelConfig(
+    #     name="ConvNeXt Tiny",
+    #     hf_identifier="facebook/convnext-tiny-224",
+    #     parameters=29_000_000,
+    #     input_size=(224, 224),
+    #     num_classes=1000,
+    #     requires_timm=False,
+    #     architecture_type="cnn",
+    #     batch_size_recommendation=32,
+    #     memory_efficient=False,
+    #     description="Modernized CNN design inspired by transformers"
+    # ),
     
-    "vit_base": ModelConfig(
-        name="Vision Transformer Base",
-        hf_identifier="google/vit-base-patch16-224",
-        parameters=86_600_000,
-        input_size=(224, 224),
-        num_classes=1000,
-        requires_timm=False,
-        architecture_type="transformer",
-        batch_size_recommendation=16,
-        memory_efficient=False,
-        description="Pure transformer architecture for image classification"
-    )
+    # "vit_base": ModelConfig(
+    #     name="Vision Transformer Base",
+    #     hf_identifier="google/vit-base-patch16-224",
+    #     parameters=86_600_000,
+    #     input_size=(224, 224),
+    #     num_classes=1000,
+    #     requires_timm=False,
+    #     architecture_type="transformer",
+    #     batch_size_recommendation=16,
+    #     memory_efficient=False,
+    #     description="Pure transformer architecture for image classification"
+    # )
 }
 
 # Model categories for different use cases
