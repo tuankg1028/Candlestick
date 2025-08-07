@@ -597,9 +597,10 @@ class BenchmarkAnalyzer:
         return save_path
     
     def export_metrics_csv_format(self, save_path: Optional[str] = None) -> str:
-        """Export results in the same CSV format as huggingface_benchmark.py MetricsCollector
+        """Export results in enhanced CSV format based on huggingface_benchmark.py MetricsCollector
         
-        Format: Coin,Experiment,Window_Size,Period,Month,Dataset,Accuracy,F1,Recall,AUROC,AUPRC
+        Format: Coin,Experiment,Window_Size,Period,Month,Dataset,Model,Accuracy,F1,Recall,AUROC,AUPRC
+        (Added Model column to identify which model produced each result)
         """
         if not self.benchmark_data:
             raise ValueError("No benchmark data loaded. Call load_results() first.")
@@ -657,6 +658,10 @@ class BenchmarkAnalyzer:
                     if "error" in model_result:
                         continue
                     
+                    # Get model name from model config or use model_name as fallback
+                    model_config = model_result.get("model_config", {})
+                    model_display_name = model_config.get("name", model_name)
+                    
                     # Extract evaluation metrics (Test dataset)
                     eval_metrics = model_result.get("evaluation_metrics", {})
                     if eval_metrics:
@@ -667,6 +672,7 @@ class BenchmarkAnalyzer:
                             'Period': period,
                             'Month': month,
                             'Dataset': 'Test',
+                            'Model': model_display_name,
                             'Accuracy': round(eval_metrics.get('accuracy', 0), 4),
                             'F1': round(eval_metrics.get('f1', 0), 4),
                             'Recall': round(eval_metrics.get('recall', 0), 4),
@@ -687,6 +693,7 @@ class BenchmarkAnalyzer:
                             'Period': period,
                             'Month': month,
                             'Dataset': 'Train',
+                            'Model': model_display_name,
                             'Accuracy': round(final_train_accuracy, 4),
                             'F1': round(final_train_accuracy, 4),  # Approximation
                             'Recall': round(final_train_accuracy, 4),  # Approximation
@@ -724,6 +731,10 @@ class BenchmarkAnalyzer:
                 if "error" in model_result:
                     continue
                 
+                # Get model name from model config or use model_name as fallback
+                model_config = model_result.get("model_config", {})
+                model_display_name = model_config.get("name", model_name)
+                
                 # Extract evaluation metrics (Test dataset)
                 eval_metrics = model_result.get("evaluation_metrics", {})
                 if eval_metrics:
@@ -734,6 +745,7 @@ class BenchmarkAnalyzer:
                         'Period': period,
                         'Month': month,
                         'Dataset': 'Test',
+                        'Model': model_display_name,
                         'Accuracy': round(eval_metrics.get('accuracy', 0), 4),
                         'F1': round(eval_metrics.get('f1', 0), 4),
                         'Recall': round(eval_metrics.get('recall', 0), 4),
@@ -754,6 +766,7 @@ class BenchmarkAnalyzer:
                         'Period': period,
                         'Month': month,
                         'Dataset': 'Train',
+                        'Model': model_display_name,
                         'Accuracy': round(final_train_accuracy, 4),
                         'F1': round(final_train_accuracy, 4),  # Approximation
                         'Recall': round(final_train_accuracy, 4),  # Approximation
@@ -766,13 +779,13 @@ class BenchmarkAnalyzer:
             print("No metrics data to export")
             return save_path
         
-        # Sort by Coin, Experiment, Window_Size, Period, Month, Dataset
+        # Sort by Coin, Experiment, Window_Size, Period, Month, Dataset, Model
         sort_key = lambda x: (x['Coin'], x['Experiment'], x['Window_Size'], 
-                             x['Period'], x['Month'], x['Dataset'])
+                             x['Period'], x['Month'], x['Dataset'], x['Model'])
         metrics_data.sort(key=sort_key)
         
-        # Write CSV file using the exact format from huggingface_benchmark.py
-        columns = ['Coin', 'Experiment', 'Window_Size', 'Period', 'Month', 'Dataset', 
+        # Write CSV file with Model column added
+        columns = ['Coin', 'Experiment', 'Window_Size', 'Period', 'Month', 'Dataset', 'Model',
                   'Accuracy', 'F1', 'Recall', 'AUROC', 'AUPRC']
         
         import csv
@@ -789,7 +802,7 @@ class BenchmarkAnalyzer:
                              for record in metrics_data))
         
         print(f"Exported {len(metrics_data)} records ({models_count} combinations) to {save_path}")
-        print(f"CSV format matches huggingface_benchmark.py MetricsCollector output")
+        print(f"CSV format based on huggingface_benchmark.py MetricsCollector with Model column added")
         
         return save_path
     
