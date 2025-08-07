@@ -596,6 +596,203 @@ class BenchmarkAnalyzer:
         print(f"Results exported to CSV: {save_path}")
         return save_path
     
+    def export_metrics_csv_format(self, save_path: Optional[str] = None) -> str:
+        """Export results in the same CSV format as huggingface_benchmark.py MetricsCollector
+        
+        Format: Coin,Experiment,Window_Size,Period,Month,Dataset,Accuracy,F1,Recall,AUROC,AUPRC
+        """
+        if not self.benchmark_data:
+            raise ValueError("No benchmark data loaded. Call load_results() first.")
+        
+        if save_path is None:
+            save_path = os.path.join(self.reports_dir, f"metrics_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+        
+        metrics_data = []
+        experiment_type_mapping = {
+            "regular": "R",
+            "fullimage": "F", 
+            "irregular": "I"
+        }
+        
+        # Handle comprehensive vs single benchmark data
+        if self.is_comprehensive:
+            combination_results = self.benchmark_data.get("combination_results", {})
+            
+            for combo_key, combo_data in combination_results.items():
+                if "results" not in combo_data or combo_data.get("status") in ["error", "skipped"]:
+                    continue
+                
+                # Parse combination key: coin_period_wX_experiment_type
+                parts = combo_key.split("_")
+                if len(parts) < 4:
+                    continue
+                    
+                coin = parts[0]
+                period = parts[1]
+                window_spec = parts[2]
+                experiment_type = parts[3]
+                
+                # Extract window size from "wX" format
+                try:
+                    window_size = int(window_spec.replace("w", ""))
+                except ValueError:
+                    continue
+                
+                # Map experiment type to single letter
+                experiment_code = experiment_type_mapping.get(experiment_type, experiment_type[0].upper())
+                
+                # Extract month from timestamp (fallback to current date)
+                timestamp = combo_data.get("timestamp")
+                if timestamp:
+                    try:
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        month = dt.strftime('%Y-%m')
+                    except:
+                        month = datetime.now().strftime('%Y-%m')
+                else:
+                    month = datetime.now().strftime('%Y-%m')
+                
+                # Process each model's results
+                for model_name, model_result in combo_data["results"].items():
+                    if "error" in model_result:
+                        continue
+                    
+                    # Extract evaluation metrics (Test dataset)
+                    eval_metrics = model_result.get("evaluation_metrics", {})
+                    if eval_metrics:
+                        record = {
+                            'Coin': coin,
+                            'Experiment': experiment_code,
+                            'Window_Size': window_size,
+                            'Period': period,
+                            'Month': month,
+                            'Dataset': 'Test',
+                            'Accuracy': round(eval_metrics.get('accuracy', 0), 4),
+                            'F1': round(eval_metrics.get('f1', 0), 4),
+                            'Recall': round(eval_metrics.get('recall', 0), 4),
+                            'AUROC': round(eval_metrics.get('auroc', 0), 4),
+                            'AUPRC': round(eval_metrics.get('auprc', 0), 4)
+                        }
+                        metrics_data.append(record)
+                    
+                    # Extract training metrics (Train dataset) - approximate from final training accuracy
+                    train_metrics = model_result.get("training_metrics", {})
+                    train_accuracies = train_metrics.get("train_accuracies", [])
+                    if train_accuracies:
+                        final_train_accuracy = train_accuracies[-1]
+                        train_record = {
+                            'Coin': coin,
+                            'Experiment': experiment_code,
+                            'Window_Size': window_size,
+                            'Period': period,
+                            'Month': month,
+                            'Dataset': 'Train',
+                            'Accuracy': round(final_train_accuracy, 4),
+                            'F1': round(final_train_accuracy, 4),  # Approximation
+                            'Recall': round(final_train_accuracy, 4),  # Approximation
+                            'AUROC': round(final_train_accuracy, 4),  # Approximation
+                            'AUPRC': round(final_train_accuracy, 4)   # Approximation
+                        }
+                        metrics_data.append(train_record)
+        
+        else:
+            # Handle single benchmark data
+            config = self.benchmark_data.get("benchmark_config", {})
+            results = self.benchmark_data.get("results", {})
+            
+            coin = config.get("coin", "UNKNOWN")
+            period = config.get("period", "unknown")
+            window_size = config.get("window_size", 0)
+            experiment_type = config.get("experiment_type", "regular")
+            
+            # Map experiment type to single letter
+            experiment_code = experiment_type_mapping.get(experiment_type, experiment_type[0].upper())
+            
+            # Get month from timestamp
+            timestamp = self.benchmark_data.get("timestamp")
+            if timestamp:
+                try:
+                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    month = dt.strftime('%Y-%m')
+                except:
+                    month = datetime.now().strftime('%Y-%m')
+            else:
+                month = datetime.now().strftime('%Y-%m')
+            
+            # Process each model's results
+            for model_name, model_result in results.items():
+                if "error" in model_result:
+                    continue
+                
+                # Extract evaluation metrics (Test dataset)
+                eval_metrics = model_result.get("evaluation_metrics", {})
+                if eval_metrics:
+                    record = {
+                        'Coin': coin,
+                        'Experiment': experiment_code,
+                        'Window_Size': window_size,
+                        'Period': period,
+                        'Month': month,
+                        'Dataset': 'Test',
+                        'Accuracy': round(eval_metrics.get('accuracy', 0), 4),
+                        'F1': round(eval_metrics.get('f1', 0), 4),
+                        'Recall': round(eval_metrics.get('recall', 0), 4),
+                        'AUROC': round(eval_metrics.get('auroc', 0), 4),
+                        'AUPRC': round(eval_metrics.get('auprc', 0), 4)
+                    }
+                    metrics_data.append(record)
+                
+                # Extract training metrics (Train dataset)
+                train_metrics = model_result.get("training_metrics", {})
+                train_accuracies = train_metrics.get("train_accuracies", [])
+                if train_accuracies:
+                    final_train_accuracy = train_accuracies[-1]
+                    train_record = {
+                        'Coin': coin,
+                        'Experiment': experiment_code,
+                        'Window_Size': window_size,
+                        'Period': period,
+                        'Month': month,
+                        'Dataset': 'Train',
+                        'Accuracy': round(final_train_accuracy, 4),
+                        'F1': round(final_train_accuracy, 4),  # Approximation
+                        'Recall': round(final_train_accuracy, 4),  # Approximation
+                        'AUROC': round(final_train_accuracy, 4),  # Approximation
+                        'AUPRC': round(final_train_accuracy, 4)   # Approximation
+                    }
+                    metrics_data.append(train_record)
+        
+        if not metrics_data:
+            print("No metrics data to export")
+            return save_path
+        
+        # Sort by Coin, Experiment, Window_Size, Period, Month, Dataset
+        sort_key = lambda x: (x['Coin'], x['Experiment'], x['Window_Size'], 
+                             x['Period'], x['Month'], x['Dataset'])
+        metrics_data.sort(key=sort_key)
+        
+        # Write CSV file using the exact format from huggingface_benchmark.py
+        columns = ['Coin', 'Experiment', 'Window_Size', 'Period', 'Month', 'Dataset', 
+                  'Accuracy', 'F1', 'Recall', 'AUROC', 'AUPRC']
+        
+        import csv
+        with open(save_path, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=columns)
+            writer.writeheader()
+            
+            for record in metrics_data:
+                writer.writerow(record)
+        
+        # Log summary
+        models_count = len(set((record['Coin'], record['Experiment'], record['Window_Size'], 
+                              record['Period'], record['Month'], record['Dataset']) 
+                             for record in metrics_data))
+        
+        print(f"Exported {len(metrics_data)} records ({models_count} combinations) to {save_path}")
+        print(f"CSV format matches huggingface_benchmark.py MetricsCollector output")
+        
+        return save_path
+    
     def create_full_analysis_report(self, output_prefix: Optional[str] = None):
         """Create a complete analysis with all visualizations and reports"""
         if output_prefix is None:
@@ -656,6 +853,11 @@ class BenchmarkAnalyzer:
             
             print(f"  ✓ Analysis completed for {exp_type}")
         
+        # Generate metrics CSV in huggingface_benchmark.py format
+        print(f"\nGenerating metrics CSV in standard format...")
+        metrics_csv_path = self.export_metrics_csv_format(f"{output_prefix}_metrics.csv")
+        print(f"  ✓ Metrics CSV generated: {metrics_csv_path}")
+        
         # If we have multiple experiment types, also create a combined report
         if len(experiment_types) > 1:
             print(f"\nGenerating combined analysis across all experiment types...")
@@ -682,6 +884,9 @@ class BenchmarkAnalyzer:
             all_generated_files["combined"] = combined_files
             print("  ✓ Combined analysis completed")
         
+        # Add metrics CSV to all generated files
+        all_generated_files["metrics_csv"] = f"{output_prefix}_metrics.csv"
+        
         print(f"\n✓ Full analysis completed! Files generated:")
         for exp_type, files in all_generated_files.items():
             print(f"  {exp_type}:")
@@ -702,6 +907,8 @@ def main():
     parser.add_argument("--reports-dir", default="benchmarks/reports", help="Reports output directory")
     parser.add_argument("--pattern", default="*benchmark*.json", help="Pattern to match result files (benchmark_suite_*.json or comprehensive_benchmark_*.json)")
     parser.add_argument("--output-prefix", help="Output file prefix")
+    parser.add_argument("--export-metrics-csv", action="store_true", help="Export metrics in huggingface_benchmark.py CSV format")
+    parser.add_argument("--metrics-csv-path", help="Custom path for metrics CSV export")
     
     args = parser.parse_args()
     
@@ -712,8 +919,13 @@ def main():
         # Load results
         analyzer.load_results(args.pattern)
         
-        # Create full analysis
-        analyzer.create_full_analysis_report(args.output_prefix)
+        # Export metrics CSV if requested
+        if args.export_metrics_csv:
+            csv_path = args.metrics_csv_path or None
+            analyzer.export_metrics_csv_format(csv_path)
+        else:
+            # Create full analysis
+            analyzer.create_full_analysis_report(args.output_prefix)
         
     except FileNotFoundError as e:
         print(f"Error: {e}")
