@@ -87,40 +87,42 @@ python merged_candlestick.py --experiment regular
 # 3. Verify data
 python huggingface_benchmark.py --list-data
 
-# 4. Run quick test
-python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
+# 4. Run quick comprehensive test
+python huggingface_benchmark.py --comprehensive --model-set quick_test --epochs 2
+# Generates: comprehensive_metrics_full_benchmark_YYYYMMDD_HHMMSS.csv
 
-# 5. Analyze results
-python results_analyzer.py
+# 5. View results
+head -20 comprehensive_metrics_full_benchmark_*.csv
 ```
 
 ### Individual Steps
 
-#### 1. Quick Test (5 minutes)
-Test 2 lightweight models on a small dataset:
+#### 1. Quick Comprehensive Test (30 minutes)
+Test 2 lightweight models across all combinations:
 ```bash
-python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
+python huggingface_benchmark.py --comprehensive --model-set quick_test --epochs 2
 ```
 
-#### 2. Lightweight Benchmark (30 minutes)
-Test all lightweight models:
+#### 2. Lightweight Comprehensive Benchmark (2-4 hours)
+Test lightweight models across all combinations:
 ```bash
-python huggingface_benchmark.py --model-set lightweight --max-samples 1000 --epochs 5
+python huggingface_benchmark.py --comprehensive --model-set lightweight --epochs 5
 ```
 
-#### 3. Full Benchmark Suite (4-8 hours)
-Test all 9 models (requires significant computational resources):
+#### 3. Full Comprehensive Benchmark (8-24 hours)
+Test all 9 models across all combinations (requires significant computational resources):
 ```bash
-python huggingface_benchmark.py --model-set full_benchmark --epochs 10
+python huggingface_benchmark.py --comprehensive --model-set full_benchmark --epochs 10
 ```
 
 #### 4. Results Analysis
-Generate comprehensive analysis and visualizations:
+The benchmark automatically generates a CSV report. You can analyze it directly:
 ```bash
-python results_analyzer.py
+# View the generated CSV file
+cat comprehensive_metrics_full_benchmark_*.csv | head -20
 
-# Or with custom output prefix
-python results_analyzer.py --output-prefix my_analysis
+# Or import into Python for analysis
+python -c "import pandas as pd; df = pd.read_csv('comprehensive_metrics_full_benchmark_*.csv'); print(df.head())"
 ```
 
 ## Command Line Options
@@ -131,38 +133,36 @@ python huggingface_benchmark.py [OPTIONS]
 
 Options:
   --model-set {quick_test,lightweight,balanced,full_benchmark,transformers_only,cnns_only}
-                        Set of models to benchmark (default: quick_test)
-  --coin TEXT           Cryptocurrency to analyze (default: BTCUSDT)
-  --period TEXT         Time period for analysis (default: 7days)
-  --window-size INT     Window size for candlestick images (default: 5)
-  --experiment-type {regular,fullimage,irregular}
-                        Experiment type (default: regular)
+                        Set of models to benchmark (default: full_benchmark)
+  --comprehensive       Run comprehensive benchmark across all combinations
+  --coins TEXT [TEXT ...]  Coins to test (for comprehensive benchmark)
+  --periods TEXT [TEXT ...]  Periods to test (for comprehensive benchmark)  
+  --window-sizes INT [INT ...]  Window sizes to test (for comprehensive benchmark)
+  --experiment-types {regular,fullimage,irregular} [...]  Experiment types to test
+  --coin TEXT           Cryptocurrency to analyze (single benchmark, default: BTCUSDT)
+  --period TEXT         Time period for analysis (single benchmark, default: 7days)
+  --window-size INT     Window size for candlestick images (single benchmark, default: 5)
+  --experiment-type {regular,fullimage,irregular}  Experiment type (single benchmark, default: regular)
   --epochs INT          Number of training epochs (default: 5)
-  --max-samples INT     Maximum samples to use (0 for all, default: 1000)
+  --max-samples INT     Maximum samples to use (0 for all, default: 0)
   --output-dir TEXT     Output directory (default: benchmarks)
   --list-data           List available candlestick data and exit
 
 Examples:
+  # Comprehensive benchmark (recommended) - generates single CSV report
+  python huggingface_benchmark.py --comprehensive --model-set full_benchmark
+  
+  # Quick comprehensive test
+  python huggingface_benchmark.py --comprehensive --model-set quick_test --epochs 2
+  
+  # Single configuration test (no CSV generated)  
+  python huggingface_benchmark.py --coin ETHUSDT --period 14days --model-set lightweight
+  
   # List available data
   python huggingface_benchmark.py --list-data
-  
-  # Quick test
-  python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
-  
-  # Specific configuration
-  python huggingface_benchmark.py --coin ETHUSDT --period 14days --model-set lightweight
 ```
 
-### results_analyzer.py
-```bash
-python results_analyzer.py [OPTIONS]
-
-Options:
-  --results-dir TEXT    Results directory (default: benchmarks/results)
-  --reports-dir TEXT    Reports output directory (default: benchmarks/reports)
-  --pattern TEXT        Pattern to match result files (default: benchmark_suite_*.json)
-  --output-prefix TEXT  Output file prefix
-```
+**Note**: Only `--comprehensive` mode generates the CSV report file. Single benchmarks are for testing only.
 
 ## Model Sets
 
@@ -175,17 +175,15 @@ Options:
 
 ## Output Files
 
-The framework generates several types of output:
+The framework generates **one streamlined report file**:
 
-### Results Directory (`benchmarks/results/`)
-- `benchmark_suite_*.json`: Complete benchmark results
-- `{model_name}_results.json`: Individual model results
+### Main Directory
+- `comprehensive_metrics_full_benchmark_{timestamp}.csv`: **Single comprehensive report**
+  - Format: `Coin,Experiment,Window_Size,Period,Month,Model,Accuracy,F1,Recall,AUROC,AUPRC`
+  - Contains: Test dataset results only with model attribution
+  - Purpose: Complete performance comparison across all models and combinations
 
-### Reports Directory (`benchmarks/reports/`)
-- `*_performance.png`: Performance comparison plots
-- `*_training_curves.png`: Training progress visualization
-- `*_detailed_report.txt`: Comprehensive text report
-- `*_results.csv`: Results in CSV format
+**Note**: All JSON files and multiple reports have been removed to simplify output. Only the essential CSV metrics file is generated.
 
 ## Understanding the Results
 
@@ -201,27 +199,40 @@ The framework generates several types of output:
 - **Inference Time**: Time for model predictions
 - **Parameters**: Total model parameters
 
-### Visualizations
-1. **Accuracy vs Parameters**: Model size vs performance trade-offs
-2. **Training Curves**: Loss and accuracy progression
-3. **Memory Usage**: Resource consumption analysis
-4. **Efficiency Analysis**: Combined performance and resource metrics
+### CSV Data Analysis
+The CSV file contains all the data needed for analysis:
+1. **Model Comparison**: Compare performance across different models
+2. **Combination Analysis**: Identify best model for each configuration
+3. **Trend Analysis**: Track performance across different periods and window sizes
+4. **Import into Excel/Python**: Easy to analyze with pandas, Excel, or other tools
 
 ## Best Practices
 
 ### For Quick Testing
 ```bash
-python huggingface_benchmark.py --model-set quick_test --max-samples 200 --epochs 2
+python huggingface_benchmark.py --comprehensive --model-set quick_test --epochs 2
+# Generates comprehensive CSV in ~30 minutes
 ```
 
 ### For Production Benchmarking
 ```bash
-python huggingface_benchmark.py --model-set full_benchmark --epochs 15 --max-samples 5000
+python huggingface_benchmark.py --comprehensive --model-set full_benchmark --epochs 10
+# Generates comprehensive CSV with all models and combinations
 ```
 
 ### For Memory-Constrained Systems
 ```bash
-python huggingface_benchmark.py --model-set lightweight --epochs 5
+python huggingface_benchmark.py --comprehensive --model-set lightweight --epochs 5
+# Only lightweight models to reduce memory usage
+```
+
+### For Custom Analysis
+```bash
+# Test specific combinations only
+python huggingface_benchmark.py --comprehensive \
+    --coins BTCUSDT ETHUSDT \
+    --periods 7days 14days \
+    --model-set balanced
 ```
 
 ## Integration with Existing Pipeline
@@ -320,24 +331,25 @@ python -c "from model_configs import get_model_config; print(get_model_config('e
    python merged_candlestick.py --experiment fullimage
    ```
 
-2. **Run quick benchmark**:
+2. **Run quick comprehensive test**:
    ```bash
-   python huggingface_benchmark.py --model-set quick_test
+   python huggingface_benchmark.py --comprehensive --model-set quick_test --epochs 2
+   # Generates: comprehensive_metrics_full_benchmark_YYYYMMDD_HHMMSS.csv
    ```
 
-3. **Analyze results**:
+3. **Review results**:
    ```bash
-   python results_analyzer.py
+   # View top results
+   head -20 comprehensive_metrics_full_benchmark_*.csv
+   
+   # Or import into Python/Excel for analysis
+   python -c "import pandas as pd; print(pd.read_csv('comprehensive_metrics_full_benchmark_*.csv').head())"
    ```
 
-4. **Run full benchmark** (if satisfied with quick test):
+4. **Run full comprehensive benchmark** (if satisfied with quick test):
    ```bash
-   python huggingface_benchmark.py --model-set full_benchmark --epochs 10
-   ```
-
-5. **Generate final report**:
-   ```bash
-   python results_analyzer.py --output-prefix final_analysis
+   python huggingface_benchmark.py --comprehensive --model-set full_benchmark --epochs 10
+   # Generates final comprehensive CSV report
    ```
 
 ## Model Recommendations

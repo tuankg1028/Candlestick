@@ -662,7 +662,7 @@ class BenchmarkAnalyzer:
                     model_config = model_result.get("model_config", {})
                     model_display_name = model_config.get("name", model_name)
                     
-                    # Extract evaluation metrics (Test dataset)
+                    # Extract evaluation metrics (Test dataset only)
                     eval_metrics = model_result.get("evaluation_metrics", {})
                     if eval_metrics:
                         record = {
@@ -671,7 +671,6 @@ class BenchmarkAnalyzer:
                             'Window_Size': window_size,
                             'Period': period,
                             'Month': month,
-                            'Dataset': 'Test',
                             'Model': model_display_name,
                             'Accuracy': round(eval_metrics.get('accuracy', 0), 4),
                             'F1': round(eval_metrics.get('f1', 0), 4),
@@ -680,27 +679,6 @@ class BenchmarkAnalyzer:
                             'AUPRC': round(eval_metrics.get('auprc', 0), 4)
                         }
                         metrics_data.append(record)
-                    
-                    # Extract training metrics (Train dataset) - approximate from final training accuracy
-                    train_metrics = model_result.get("training_metrics", {})
-                    train_accuracies = train_metrics.get("train_accuracies", [])
-                    if train_accuracies:
-                        final_train_accuracy = train_accuracies[-1]
-                        train_record = {
-                            'Coin': coin,
-                            'Experiment': experiment_code,
-                            'Window_Size': window_size,
-                            'Period': period,
-                            'Month': month,
-                            'Dataset': 'Train',
-                            'Model': model_display_name,
-                            'Accuracy': round(final_train_accuracy, 4),
-                            'F1': round(final_train_accuracy, 4),  # Approximation
-                            'Recall': round(final_train_accuracy, 4),  # Approximation
-                            'AUROC': round(final_train_accuracy, 4),  # Approximation
-                            'AUPRC': round(final_train_accuracy, 4)   # Approximation
-                        }
-                        metrics_data.append(train_record)
         
         else:
             # Handle single benchmark data
@@ -735,7 +713,7 @@ class BenchmarkAnalyzer:
                 model_config = model_result.get("model_config", {})
                 model_display_name = model_config.get("name", model_name)
                 
-                # Extract evaluation metrics (Test dataset)
+                # Extract evaluation metrics (Test dataset only)
                 eval_metrics = model_result.get("evaluation_metrics", {})
                 if eval_metrics:
                     record = {
@@ -744,7 +722,6 @@ class BenchmarkAnalyzer:
                         'Window_Size': window_size,
                         'Period': period,
                         'Month': month,
-                        'Dataset': 'Test',
                         'Model': model_display_name,
                         'Accuracy': round(eval_metrics.get('accuracy', 0), 4),
                         'F1': round(eval_metrics.get('f1', 0), 4),
@@ -753,39 +730,18 @@ class BenchmarkAnalyzer:
                         'AUPRC': round(eval_metrics.get('auprc', 0), 4)
                     }
                     metrics_data.append(record)
-                
-                # Extract training metrics (Train dataset)
-                train_metrics = model_result.get("training_metrics", {})
-                train_accuracies = train_metrics.get("train_accuracies", [])
-                if train_accuracies:
-                    final_train_accuracy = train_accuracies[-1]
-                    train_record = {
-                        'Coin': coin,
-                        'Experiment': experiment_code,
-                        'Window_Size': window_size,
-                        'Period': period,
-                        'Month': month,
-                        'Dataset': 'Train',
-                        'Model': model_display_name,
-                        'Accuracy': round(final_train_accuracy, 4),
-                        'F1': round(final_train_accuracy, 4),  # Approximation
-                        'Recall': round(final_train_accuracy, 4),  # Approximation
-                        'AUROC': round(final_train_accuracy, 4),  # Approximation
-                        'AUPRC': round(final_train_accuracy, 4)   # Approximation
-                    }
-                    metrics_data.append(train_record)
         
         if not metrics_data:
             print("No metrics data to export")
             return save_path
         
-        # Sort by Coin, Experiment, Window_Size, Period, Month, Dataset, Model
+        # Sort by Coin, Experiment, Window_Size, Period, Month, Model
         sort_key = lambda x: (x['Coin'], x['Experiment'], x['Window_Size'], 
-                             x['Period'], x['Month'], x['Dataset'], x['Model'])
+                             x['Period'], x['Month'], x['Model'])
         metrics_data.sort(key=sort_key)
         
-        # Write CSV file with Model column added
-        columns = ['Coin', 'Experiment', 'Window_Size', 'Period', 'Month', 'Dataset', 'Model',
+        # Write CSV file with Model column (Dataset column removed, Test records only)
+        columns = ['Coin', 'Experiment', 'Window_Size', 'Period', 'Month', 'Model',
                   'Accuracy', 'F1', 'Recall', 'AUROC', 'AUPRC']
         
         import csv
@@ -798,11 +754,11 @@ class BenchmarkAnalyzer:
         
         # Log summary
         models_count = len(set((record['Coin'], record['Experiment'], record['Window_Size'], 
-                              record['Period'], record['Month'], record['Dataset']) 
+                              record['Period'], record['Month'], record['Model']) 
                              for record in metrics_data))
         
         print(f"Exported {len(metrics_data)} records ({models_count} combinations) to {save_path}")
-        print(f"CSV format based on huggingface_benchmark.py MetricsCollector with Model column added")
+        print(f"CSV format: Test dataset only with Model column (Dataset column removed)")
         
         return save_path
     
@@ -898,7 +854,7 @@ class BenchmarkAnalyzer:
             print("  ✓ Combined analysis completed")
         
         # Add metrics CSV to all generated files
-        all_generated_files["metrics_csv"] = f"{output_prefix}_metrics.csv"
+        all_generated_files["metrics_csv"] = {"metrics_csv": f"{output_prefix}_metrics.csv"}
         
         print(f"\n✓ Full analysis completed! Files generated:")
         for exp_type, files in all_generated_files.items():

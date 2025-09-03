@@ -65,13 +65,16 @@ The comprehensive benchmark will:
 
 1. **Progress tracking**: Shows `[X/Y]` progress for each combination
 2. **Skip missing data**: Automatically skips combinations where data doesn't exist
-3. **Comprehensive results**: Saves detailed JSON with all results
+3. **Single CSV report**: Generates one comprehensive metrics file
 4. **Summary tables**: 
    - Top 10 results by accuracy across all combinations
    - Best model per combination
 5. **Time tracking**: Shows total time in hours
 
-Results are saved to: `benchmarks/results/comprehensive_benchmark_[model_set]_[timestamp].json`
+**Single output file**: `comprehensive_metrics_full_benchmark_[timestamp].csv`
+- Format: `Coin,Experiment,Window_Size,Period,Month,Model,Accuracy,F1,Recall,AUROC,AUPRC`
+- Contains: Test dataset results only with model attribution
+- Purpose: Complete performance comparison ready for analysis in Excel/Python
 
 ## Expected Runtime
 
