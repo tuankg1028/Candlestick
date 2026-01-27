@@ -1,0 +1,63 @@
+# Virtual Environment
+venv/
+
+# Database - all training data and models
+database/
+
+# Logs
+logs/
+*.log
+
+# PM2
+.pm2/
+ecosystem*.config.js
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data files
+*.zip
+*.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Model files
+*.pth
+*.h5
+*.keras
+
+# Image datasets (if any are in src/)
+src/crypto_research_minute/*/images/
+src/crypto_research_minute_fullimage/*/images/
+src/crypto_research_minute_irregular/*/images/
