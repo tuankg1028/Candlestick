@@ -41,10 +41,13 @@ Candlestick/
 ├── run_gpu.sh                 # GPU runner script (sets CUDA paths)
 ├── run_pm2_remaining.sh       # PM2 training script for remaining models (Regular dataset)
 ├── run_fullimage_pm2.sh       # PM2 training script for Fullimage dataset
+├── run_irregular_pm2.sh       # PM2 training script for Irregular dataset
 ├── ecosystem_parallel.config.js  # PM2 configuration for parallel training (Regular)
 ├── ecosystem_fullimage.config.js  # PM2 configuration for Fullimage training
+├── export_all_results.py      # Export all results to CSV format
 ├── venv/                      # Virtual environment (with GPU support)
 ├── logs/                      # PM2 logs
+├── results_export/            # Exported CSV results (per coin)
 ├── database/                  # All datasets stored here (centralized location)
 │   ├── BTCUSDT/               # Regular dataset results (per coin)
 │   ├── ETHUSDT/
@@ -241,17 +244,40 @@ Auprc: 0.4956
 
 ### Exported CSV Files
 
-Results can be exported to CSV format for analysis:
-- `edgenext_results.csv` - edgenext model results from Regular dataset
-- `regular_results.csv` - All models from Regular dataset (mobilenetv3, ghostnet, levit)
+Results can be exported to per-coin CSV files using `export_all_results.py`:
 
-CSV columns: `Coin, Dataset, Model, Window, Period_Days, Result_Type, Test_Year, Test_Month, Accuracy, F1, Recall, AUROC, AUPRC`
-
-To export results, use the export scripts:
 ```bash
-python export_edgenext_results.py      # Export edgenext results
-python export_regular_results.py      # Export all Regular results
+python export_all_results.py
 ```
+
+**Output format**: `{COIN}_exp{N}_results.csv`
+- `exp1`: Regular dataset (Experiment I)
+- `exp2`: Fullimage dataset (Experiment II)
+- `exp3`: Irregular dataset (Experiment III)
+
+**CSV columns**: `Coin, Experiment, Model, Window_Size, Period, Month, Dataset, Accuracy, F1, Recall, AUROC, AUPRC`
+
+**Example files**:
+- `BTCUSDT_exp1_results.csv` - Regular dataset results for BTC
+- `ETHUSDT_exp2_results.csv` - Fullimage dataset results for ETH
+- `ADAUSDT_exp3_results.csv` - Irregular dataset results for ADA
+
+**Sample data**:
+```csv
+Coin,Experiment,Model,Window_Size,Period,Month,Dataset,Accuracy,F1,Recall,AUROC,AUPRC
+ADAUSDT,I,ghostnet,30,21days,2024-12,Test,1.0,1.0,1.0,1.0,1.0
+ADAUSDT,I,edgenext,5,14days,2024-11,Test,0.549,0.0,0.0,0.7654,0.6775
+ADAUSDT,II,mobilenetv3,5,21days,2024-01,Test,1.0,1.0,1.0,1.0,1.0
+```
+
+**Column descriptions**:
+- `Coin`: Cryptocurrency pair (BTCUSDT, ETHUSDT, etc.)
+- `Experiment`: I (Regular), II (Fullimage), III (Irregular)
+- `Model`: edgenext, mobilenetv3, ghostnet, levit, custom
+- `Window_Size`: 5, 15, or 30 candles
+- `Period`: 7days, 14days, 21days, 28days
+- `Month`: YYYY-MM format
+- `Dataset`: Train or Test
 
 ### Training Experiments
 

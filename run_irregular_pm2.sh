@@ -5,7 +5,6 @@ export CUDA_DIR=/usr/local/cuda-12.3
 export LD_LIBRARY_PATH=/usr/local/cuda-12.3/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 export PATH=/usr/local/cuda-12.3/bin:$PATH
 export XLA_FLAGS="--xla_gpu_cuda_data_dir=/usr/local/cuda-12.3"
-export CUDA_VISIBLE_DEVICES=0
 export PYTHONUNBUFFERED=1
 
 cd /home/nckh/son/Candlestick
@@ -14,6 +13,27 @@ source venv/bin/activate
 LOG_FILE="training_irregular_$(date +%Y%m%d_%H%M%S).log"
 MAX_PARALLEL=3
 
+# Multi-GPU configuration (round-robin distribution)
+# Available GPUs - modify this list based on your server
+GPUS=(0)  # Add more GPUs like: GPUS=(0 1 2 3) for 4 GPUs
+NUM_GPUS=${#GPUS[@]}
+
+# Auto-detect GPUs if nvidia-smi is available
+if command -v nvidia-smi &> /dev/null; then
+  DETECTED_GPUS=$(nvidia-smi --list-gpus | wc -l)
+  if [ $DETECTED_GPUS -gt 1 ]; then
+    GPUS=()
+    for ((i=0; i<DETECTED_GPUS; i++)); do
+      GPUS+=($i)
+    done
+    NUM_GPUS=$DETECTED_GPUS
+    echo "Auto-detected $NUM_GPUS GPU(s)" | tee "$LOG_FILE"
+  fi
+fi
+
+# Calculate MAX_PARALLEL based on GPU count (3 jobs per GPU)
+MAX_PARALLEL=$((NUM_GPUS * 3))
+
 # All 4 PyTorch models for Irregular dataset
 MODELS=("edgenext" "mobilenetv3" "ghostnet" "levit")
 COINS=("BTCUSDT" "ETHUSDT" "BNBUSDT" "XRPUSDT" "ADAUSDT" "DOGEUSDT")
@@ -21,7 +41,9 @@ WINDOWS=(5 15 30)
 MISSING=(0.6 0.8 0.95)  # Missing data ratios
 
 echo "========================================" | tee "$LOG_FILE"
-echo "PM2 IRREGULAR TRAINING - $MAX_PARALLEL jobs" | tee -a "$LOG_FILE"
+echo "PM2 IRREGULAR TRAINING - Multi-GPU" | tee -a "$LOG_FILE"
+echo "GPUs: ${GPUS[*]} ($NUM_GPUS available)" | tee -a "$LOG_FILE"
+echo "Max parallel jobs: $MAX_PARALLEL" | tee -a "$LOG_FILE"
 echo "Models: ${MODELS[*]}" | tee -a "$LOG_FILE"
 echo "Missing ratios: ${MISSING[*]}" | tee -a "$LOG_FILE"
 echo "Started: $(date)" | tee -a "$LOG_FILE"
@@ -51,10 +73,15 @@ for model in "${MODELS[@]}"; do
           [ ${#PIDS[@]} -ge $MAX_PARALLEL ] && sleep 2
         done
 
-        echo "" | tee -a "$LOG_FILE"
-        echo "[$CURRENT/$TOTAL] $model - $coin - w$window - m${missing} (${#PIDS[@]}/$MAX_PARALLEL running)" | tee -a "$LOG_FILE"
+        # Round-robin GPU assignment
+        GPU_INDEX=$(( (CURRENT - 1) % NUM_GPUS ))
+        GPU_ID=${GPUS[$GPU_INDEX]}
 
-        python3 src/train_irregular_pretrained_gpu.py \
+        echo "" | tee -a "$LOG_FILE"
+        echo "[$CURRENT/$TOTAL] $model - $coin - w$window - m${missing} | GPU:$GPU_ID (${#PIDS[@]}/$MAX_PARALLEL running)" | tee -a "$LOG_FILE"
+
+        # Run with specific GPU
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 src/train_irregular_pretrained_gpu.py \
             --model "$model" \
             --coin "$coin" \
             --window "$window" \
